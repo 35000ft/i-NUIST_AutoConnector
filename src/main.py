@@ -11,6 +11,7 @@ from tkinter import ttk
 # 调用Tk()创建主窗口
 from tkinter import messagebox
 import requests
+import winshell as winshell
 
 __ISP_dict = {
     "中国移动": 2,
@@ -72,19 +73,31 @@ def login(username, password, ISP):
 
 
 window = tk.Tk()
-# 给主窗口起一个名字，也就是窗口的名字
-window.title('i-NUIST Auto Connect')
-# 设置窗口大小变量
+window.title('i-NUIST Auto Connector')
 width = 300
 height = 180
-# 窗口居中，获取屏幕尺寸以计算布局参数，使窗口居屏幕中央
+# 窗口居中
 screenwidth = window.winfo_screenwidth()
 screenheight = window.winfo_screenheight()
 size_geo = '%dx%d+%d+%d' % (width, height, (screenwidth - width) / 2, (screenheight - height) / 2)
 window.geometry(size_geo)
 
 
-# 开启主循环，让窗口处于显示状态
+def create_shortcut(dest_dir, target, filename):
+    title = 'i-NUIST ShortCut'
+    s = os.path.basename(filename + '.lnk')
+    winshell.CreateShortcut(
+        Path=os.path.join(dest_dir, s),
+        Target=target,
+        Icon=(target, 0),
+        StartIn=os.path.abspath('.'),
+        Description=title)
+
+
+def delete_shortcut(dest_dir, target, filename):
+    delfile = os.path.join(dest_dir, filename + '.lnk')
+    if os.path.exists(dest_dir + filename + 'lnk'):
+        winshell.delete_file(delfile)
 
 
 def sub_login():
@@ -99,6 +112,7 @@ def sub_login():
         msg = login(username, password, str(ISP))
         if msg == '登录成功':
             break
+    print(is_auto_start.get())
     remember_account(username, password, cbox.get(), is_auto_start.get())
     auto_start(is_auto_start.get())
     messagebox.showinfo('登录信息', msg)
@@ -118,6 +132,8 @@ def auto_complete():
     try:
         with open('./data/account.dat', 'r', encoding='utf-8') as account_file:
             info = account_file.readlines()
+            if len(info) < 3 or len(info) > 4:
+                return
             e1.insert(0, info[0].strip())
             e2.insert(0, info[1].strip())
             cbox.set(info[2].strip())
@@ -126,6 +142,7 @@ def auto_complete():
             if len(info) == 4:
                 _auto_start = int(info[3].strip())
                 if _auto_start == 1:
+                    check_is_auto_start.select()
                     sub_login()
     except FileNotFoundError as e:
         return
@@ -138,19 +155,22 @@ def auto_start(is_start):
     :return:
     """
     is_start = int(is_start)
-    program_name = os.path.basename(sys.argv[0])  # 获取自身文件名
+    program_name = os.path.basename(sys.argv[0]).split('.')[0]  # 获取自身文件名
     os_username = getpass.getuser()  # 获取用户名
-    base_path = r'C:\\Users'
-    base_path += '\\' + os_username + '\\' + r'AppData\\Roaming\Microsoft\\Windows\\Start Menu\\Programs\\Startup'
-    start_dir = base_path  # 启动目录
+    dest_path = r'C:\\Users'
+    dest_path += '\\' + os_username + '\\' + r'AppData\\Roaming\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\'
+    start_dir = dest_path  # 启动目录
     if is_start == 0:
-        if os.path.exists(start_dir + '\\' + program_name):
-            os.remove(start_dir + '\\' + program_name)
+        # if os.path.exists(start_dir + program_name):
+        #     os.remove(start_dir + program_name)
+        delete_shortcut(start_dir, os.path.abspath(sys.argv[0]), program_name)
+        pass
     elif is_start == 1:
-        if os.path.exists(start_dir + '\\' + program_name):
-            pass
-        else:
-            shutil.copy(program_name, start_dir)  # 复制文件到启动目录
+        # if os.path.exists(start_dir + program_name):
+        #     pass
+        # else:
+        #     shutil.copy(program_name, start_dir)  # 复制文件到启动目录
+        create_shortcut(start_dir, os.path.abspath(sys.argv[0]), program_name)
 
 
 def parse_ISP(_ISP):
